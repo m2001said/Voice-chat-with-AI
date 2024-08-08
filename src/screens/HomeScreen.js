@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import axios from 'axios';
 import {
   View,
   Text,
@@ -15,94 +16,67 @@ import {
 } from 'react-native-responsive-screen';
 import MicrophoneLoading from '../components/MicrophoneLoading.js';
 import Voice from '@react-native-community/voice';
-import model from '../api/openAi.js';
 import Tts from 'react-native-tts';
 import {useRoute} from '@react-navigation/native';
+import {GPT_API} from '@env';
+import {promptsMessages} from '../constants/index.js';
 
 export default function HomeScreen() {
   const route = useRoute();
   const {title} = route.params;
-
   const promptsMessages = () => {
     if (title === 'easy') {
       return [
-        // {
-        //   role: 'system',
-        //   parts: [
-        //     {
-        //       text: 'تلعب دور العميل الغاضب الذي لديه شكوى بشأن منتج اشتراه. يجب أن تكون متوتراً وتطلب من المدير حل المشكلة بشكل مهني.',
-        //     },
-        //   ],
-        // },
         {
-          role: 'user',
-          parts: [
-            {
-              text: 'أنت مدير متجر معدات. أتى إليك الآن عميل مع شكوى بشأن منتج اشتراه من متجرك. يبدو العميل مستاء جدًا، ومن مسؤوليتك التعامل مع الوضع بشكل مهني وحل المشكلة.',
-            },
-          ],
+          role: 'system',
+          content:
+            'تلعب دور العميل الغاضب الذي لديه شكوى بشأن منتج اشتراه من المتجر. يجب أن تكون متوتراً وتطلب من المدير حل المشكلة بشكل مهني. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
         {
-          role: 'model',
-          parts: [
-            {
-              text: 'عذرًا، هل أنت المدير؟ لدي شكوى جدية بشأن هاتف محمول اشتريته من هنا.',
-            },
-          ],
+          role: 'user',
+          content:
+            'أنا أعمل مدير متجر معدات. ومن مسؤوليتي التعامل مع كل الاوضاع بشكل مهني وحل المشاكل. وأنت لديك مشكلة بشأن هاتف أنت اشتريته',
+        },
+        {
+          role: 'assistant',
+          content:
+            'عذرًا، هل أنت المدير؟ لدي شكوى جدية بشأن هاتف محمول اشتريته من هنا.',
         },
       ];
     } else if (title === 'moderate') {
       return [
-        // {
-        //   role: 'system',
-        //   parts: [
-        //     {
-        //       text: 'تلعب دور القائد الذي يحتاج إلى تقديم ملاحظات بناءة لأحد أعضاء الفريق حول تأخره في تسليم المهام. يجب أن تكون هادئاً وبناءً في تعليقاتك.',
-        //     },
-        //   ],
-        // },
         {
-          role: 'user',
-          parts: [
-            {
-              text: 'أنت قائد فريق في شركة تقنية. تلقى أحد أعضاء فريقك تعليقات سلبية من زملائه حول تأخره في تسليم المهام. تحتاج إلى التحدث معه وتقديم الملاحظات بطريقة بناءة.',
-            },
-          ],
+          role: 'system',
+          content:
+            'تلعب دور عضو الفريق الذي يحتاج إلى تقديم ملاحظات بناءة حول تأخره في تسليم المهام. يجب أن تكون متعاوناً وتوضح وجهة نظرك بوضوح. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
         {
-          role: 'model',
-          parts: [
-            {
-              text: 'لقد لاحظت بعض التأخير في تسليم مهامك مؤخرًا. هل يمكنك أن تشرح لي ما يحدث؟',
-            },
-          ],
+          role: 'user',
+          content:
+            'أنت قائد فريق في شركة تقنية. تلقى أحد أعضاء فريقك تعليقات سلبية من زملائه حول تأخره في تسليم المهام. تحتاج إلى التحدث معه وتقديم الملاحظات بطريقة بناءة.',
+        },
+        {
+          role: 'assistant',
+          content:
+            'لقد لاحظت بعض التأخير في تسليم مهامك مؤخرًا. هل يمكنك أن تشرح لي ما يحدث؟ أنا عضو الفريق وأنت القائد.',
         },
       ];
     } else if (title === 'difficult') {
       return [
-        // {
-        //   role: 'system',
-        //   parts: [
-        //     {
-        //       text: 'تلعب دور العميل الصعب في التفاوض على شروط العقد. يجب أن تكون حازمًا وتطالب بشروط أفضل.',
-        //     },
-        //   ],
-        // },
         {
-          role: 'user',
-          parts: [
-            {
-              text: 'أنت مدير مبيعات في شركة. لديك اجتماع مع عميل محتمل لتفاوض حول شروط عقد جديد. العميل معروف بصعوبته في التفاوض ومطالبه العالية. تحتاج إلى إتمام الصفقة بشروط تناسب شركتك.',
-            },
-          ],
+          role: 'system',
+          content:
+            'تلعب دور العميل الصعب في التفاوض على شروط العقد. يجب أن تكون حازمًا وتطالب بشروط أفضل. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
         {
-          role: 'model',
-          parts: [
-            {
-              text: 'أنا مهتم بالمنتج الذي تقدمونه، لكنني أعتقد أن السعر مرتفع قليلاً. هل يمكننا التفاوض بشأنه؟',
-            },
-          ],
+          role: 'user',
+          content:
+            'أنت مدير مبيعات في شركة. لديك اجتماع مع عميل محتمل لتفاوض حول شروط عقد جديد. العميل معروف بصعوبته في التفاوض ومطالبه العالية. تحتاج إلى إتمام الصفقة بشروط تناسب شركتك.',
+        },
+        {
+          role: 'assistant',
+          content:
+            'أنا مهتم بالمنتج الذي تقدمونه، لكنني أعتقد أن السعر مرتفع قليلاً. هل يمكننا التفاوض بشأنه؟ أنا العميل الصعب وأنت مدير المبيعات.',
         },
       ];
     }
@@ -120,29 +94,39 @@ export default function HomeScreen() {
       const trimmedResult = text.trim();
       if (trimmedResult.length > 0) {
         let newMessages = [...messages];
-        newMessages.push({role: 'user', parts: [{text: trimmedResult}]});
+        newMessages.push({role: 'user', content: trimmedResult});
         setMessages([...newMessages]);
 
         try {
           setLoading(true);
-          const chat = model.startChat({
-            history: messages,
-            generationConfig: {
-              // maxOutputTokens: 100,
+
+          // generate text from ai--------------------
+          const res = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+              model: 'gpt-3.5-turbo',
+              messages: messages,
             },
-          });
-          const chatResult = await chat.sendMessage(trimmedResult);
-          const response = await chatResult.response;
-          const responseText = await response.text();
-          console.log('------------------------------');
-          console.log('response', response);
-          console.log('------------------------------');
-          console.log('text', responseText);
-          console.log('------------------------------');
+            {
+              headers: {
+                Authorization: `Bearer ${GPT_API}`,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+
+          let answer = res.data?.choices[0]?.message?.content;
+
+          console.log('----answer of gpt------ : ', answer);
+
           setLoading(false);
-          startTextTpSpeech(responseText);
-          newMessages.push({role: 'model', parts: [{text: responseText}]});
+          startTextTpSpeech(answer);
+          newMessages.push({role: 'assistant', content: answer});
           setMessages([...newMessages]);
+
+          console.log('=======messages=============================');
+          console.log(messages);
+          console.log('====================================');
 
           updateScrollView();
         } catch (error) {
@@ -220,7 +204,7 @@ export default function HomeScreen() {
   useEffect(() => {
     console.log('=================new result===================');
     console.log(result);
-  }, [result]);
+  }, [result, messages]);
   const speechErrorHandler = e => {
     console.log('speech Error Handler', e);
   };
@@ -270,13 +254,13 @@ export default function HomeScreen() {
               className="space-y-4"
               showsVerticalScrollIndicator={false}>
               {messages.map((message, index) => {
-                if (message.role === 'model') {
+                if (message.role === 'assistant') {
                   return (
                     <View
                       key={index}
                       style={{width: wp(70)}}
                       className="bg-green-200 rounded-xl p-2 rounded-tl-none">
-                      <Text>{message.parts[0].text}</Text>
+                      <Text>{message.content}</Text>
                     </View>
                   );
                 } else {
@@ -285,7 +269,7 @@ export default function HomeScreen() {
                       <View
                         style={{width: wp(70)}}
                         className="bg-white rounded-xl p-2 rounded-tr-none">
-                        <Text>{message.parts[0].text}</Text>
+                        <Text>{message.content}</Text>
                       </View>
                     </View>
                   );

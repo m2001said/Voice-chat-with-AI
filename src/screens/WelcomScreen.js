@@ -1,18 +1,14 @@
 import {useNavigation} from '@react-navigation/native';
 import React from 'react';
-import {View, Text, SafeAreaView, Image, TouchableOpacity} from 'react-native';
+import {View, Text, SafeAreaView} from 'react-native';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 import Features from '../components/Features.js';
-import {GEMINI_API} from '@env';
 
 export default function WelcomScreen() {
   const navigation = useNavigation();
-  console.log('===================GEMINI_API=================');
-  console.log(GEMINI_API);
-  console.log('====================================');
 
   const navigateToHome = title => {
     navigation.navigate('Home', {title});

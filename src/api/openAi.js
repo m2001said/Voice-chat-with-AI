@@ -1,9 +1,10 @@
+import axios from 'axios';
 import {
   GoogleGenerativeAI,
   HarmCategory,
   HarmBlockThreshold,
 } from '@google/generative-ai';
-import {GEMINI_API} from '@env';
+import {GEMINI_API, GPT_API} from '@env';
 
 const safetySettings = [
   {
@@ -26,40 +27,38 @@ const model = genAI.getGenerativeModel(
 
 export default model;
 
-// ------open ai
-// import axios from 'axios';
+// ------open ai---------------------------------------------------
+const client = axios.create({
+  headers: {
+    Authorization: 'Bearer ' + GPT_API,
+    'Content-Type': 'application/json',
+  },
+});
 
-// const client = axios.create({
-//   headers: {
-//     Authorization: 'Bearer ' + apiKey,
-//     'Content-Type': 'application/json',
-//   },
-// });
+export const apiCall = async (prompt, messages) => {
+  try {
+    console.log('API Key:', apiKey);
+    const res = await client.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'user',
+            content: 'create a list of all java keywords',
+          },
+        ],
+      },
+    );
+    console.log('====================================');
+    console.log('data:', res.data);
+    console.log('====================================');
 
-// export const apiCall = async (prompt, messages) => {
-//   try {
-//     console.log('API Key:', apiKey);
-//     const res = await client.post(
-//       'https://api.openai.com/v1/chat/completions',
-//       {
-//         model: 'gpt-3.5-turbo',
-//         messages: [
-//           {
-//             role: 'user',
-//             content: 'create a list of all java keywords',
-//           },
-//         ],
-//       },
-//     );
-//     console.log('====================================');
-//     console.log('data:', res.data);
-//     console.log('====================================');
-
-//     let answer = res.data?.choices[0]?.message?.content;
-//     messages.push({role: 'system', content: answer.trim()});
-//     return Promise.resolve({success: true, data: messages});
-//   } catch (error) {
-//     console.log('error in apiCall: ', error);
-//     return Promise.reject(error);
-//   }
-// };
+    let answer = res.data?.choices[0]?.message?.content;
+    // messages.push({role: 'system', content: answer.trim()});
+    // return Promise.resolve({success: true, data: messages});
+  } catch (error) {
+    console.log('error in apiCall: ', error);
+    return Promise.reject(error);
+  }
+};
