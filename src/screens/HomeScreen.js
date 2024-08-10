@@ -16,26 +16,22 @@ import {
 } from 'react-native-responsive-screen';
 import MicrophoneLoading from '../components/MicrophoneLoading.js';
 import Voice from '@react-native-community/voice';
-import Tts from 'react-native-tts';
 import {useRoute} from '@react-navigation/native';
 import {GPT_API} from '@env';
-import {promptsMessages} from '../constants/index.js';
+import RNFS from 'react-native-fs'; // For file system access
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 
 export default function HomeScreen() {
   const route = useRoute();
   const {title} = route.params;
+  const audioRecorderPlayer = new AudioRecorderPlayer();
   const promptsMessages = () => {
     if (title === 'easy') {
       return [
         {
           role: 'system',
           content:
-            'تلعب دور العميل الغاضب الذي لديه شكوى بشأن منتج اشتراه من المتجر. يجب أن تكون متوتراً وتطلب من المدير حل المشكلة بشكل مهني. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
-        },
-        {
-          role: 'user',
-          content:
-            'أنا أعمل مدير متجر معدات. ومن مسؤوليتي التعامل مع كل الاوضاع بشكل مهني وحل المشاكل. وأنت لديك مشكلة بشأن هاتف أنت اشتريته',
+            'أنت تلعب دور العميل الغاضب الذي لديه شكوى بشأن منتج اشتراه من المتجر. مهمتك هي أن تكون متوتراً وتصر على حل مشكلتك بشكل مهني. يجب ألا تقوم بدور المدير أو أي شخصية أخرى، مهما كانت الظروف. فقط تلعب دور العميل الغاضب الذي يطرح 8 أسئلة على الأقل قبل إنهاء المحادثة. تحت أي ظرف من الظروف، لا تقم بتولي دور المدير أو أي شخصية أخرى.',
         },
         {
           role: 'assistant',
@@ -116,7 +112,6 @@ export default function HomeScreen() {
           );
 
           let answer = res.data?.choices[0]?.message?.content;
-
           console.log('----answer of gpt------ : ', answer);
 
           setLoading(false);
@@ -140,28 +135,59 @@ export default function HomeScreen() {
     }
   };
 
-  const startTextTpSpeech = message => {
-    setSpeacking(true);
-    // Android
-    Tts.speak(message, {
-      androidParams: {
-        KEY_PARAM_PAN: -1,
-        KEY_PARAM_VOLUME: 0.5,
-        KEY_PARAM_STREAM: 'STREAM_MUSIC',
-      },
-    });
+  const startTextTpSpeech = async message => {
+    try {
+      setSpeacking(true);
+
+      const res = await axios.post(
+        'https://api.openai.com/v1/audio/speech',
+        {
+          model: 'tts-1',
+          input: message,
+          voice: 'alloy',
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${GPT_API}`,
+            'Content-Type': 'application/json',
+          },
+          responseType: 'blob', // Receive the response as a Blob
+        },
+      );
+
+      // Get a temporary local file path for the MP3 file
+      const path = `${RNFS.DocumentDirectoryPath}/speech.mp3`;
+
+      // Write the Blob response to a file
+      const reader = new FileReader();
+      reader.readAsDataURL(res.data);
+      reader.onloadend = async () => {
+        const base64data = reader.result.split(',')[1];
+        await RNFS.writeFile(path, base64data, 'base64');
+
+        // Play the audio file automatically
+        await audioRecorderPlayer.startPlayer(path);
+        audioRecorderPlayer.addPlayBackListener(e => {
+          if (e.currentPosition === e.duration) {
+            audioRecorderPlayer.stopPlayer();
+            audioRecorderPlayer.removePlayBackListener();
+            setSpeacking(false);
+          }
+        });
+      };
+    } catch (error) {
+      console.error('Error in startTextTpSpeech', error);
+      setSpeacking(false);
+    }
   };
 
   const clearMessages = () => {
-    Tts.stop();
     setMessages([]);
   };
   const stopSpeacking = () => {
-    Tts.stop();
     setSpeacking(false);
   };
   const startRecording = () => {
-    Tts.stop();
     setRecording(true);
     try {
       // Voice.start('en-US');
@@ -214,17 +240,6 @@ export default function HomeScreen() {
     Voice.onSpeechEnd = speechEndHandler;
     Voice.onSpeechResults = speechResultsHandler;
     Voice.onSpeechError = speechErrorHandler;
-
-    // tts handler
-    Tts.addEventListener('tts-start', event => console.log('start', event));
-    Tts.addEventListener('tts-progress', event =>
-      console.log('progress', event),
-    );
-    Tts.addEventListener('tts-finish', event => {
-      console.log('finish', event);
-      setSpeacking(false);
-    });
-    Tts.addEventListener('tts-cancel', event => console.log('cancel', event));
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
