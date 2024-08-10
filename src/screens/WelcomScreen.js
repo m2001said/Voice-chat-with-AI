@@ -1,18 +1,14 @@
 import {useNavigation} from '@react-navigation/native';
 import React from 'react';
-import {View, Text, SafeAreaView, Image, TouchableOpacity} from 'react-native';
+import {View, Text, SafeAreaView} from 'react-native';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 import Features from '../components/Features.js';
-import {GEMINI_API} from '@env';
 
 export default function WelcomScreen() {
   const navigation = useNavigation();
-  console.log('===================GEMINI_API=================');
-  console.log(GEMINI_API);
-  console.log('====================================');
 
   const navigateToHome = title => {
     navigation.navigate('Home', {title});
@@ -24,32 +20,29 @@ export default function WelcomScreen() {
         <Text
           style={{fontSize: wp(10)}}
           className="text-center font-bold text-green-700">
-          Thatek
+          اختبارات
         </Text>
         <Text style={{fontSize: wp(4)}} className="text-center text-green-700">
-          Test your self with leadership
+          اختبر نفسك وقيمها
         </Text>
       </View>
 
       <View className="flex-col -mb-14">
         <Features
-          title="easy"
-          description="ChatGPT can provide you with instant and knowledgable responses, assist
-        you with creative ideas on a wide range of topics"
+          title="سهل"
+          description="أنت مدير متجر معدات. أتى إليك الآن عميل مع شكوى بشأن منتج اشتراه من متجرك. يبدو العميل مستاء جدًا، ومن مسؤوليتك التعامل مع الوضع بشكل مهني وحل المشكلة"
           backgroundColor="#a4e0f8"
           onPress={() => navigateToHome('easy')}
         />
         <Features
-          title="moderate"
-          description="ChatGPT can provide you with instant and knowledgable responses, assist
-        you with creative ideas on a wide range of topics"
+          title="متوسط"
+          description="أنت قائد فريق في شركة تقنية. تلقى أحد أعضاء فريقك تعليقات سلبية من زملائه حول تأخره في تسليم المهام. تحتاج إلى التحدث معه وتقديم الملاحظات بطريقة بناءة."
           backgroundColor="#f8bca4"
           onPress={() => navigateToHome('moderate')}
         />
         <Features
-          title="difficult"
-          description="ChatGPT can provide you with instant and knowledgable responses, assist
-        you with creative ideas on a wide range of topics"
+          title="صعب"
+          description="أنت مدير مبيعات في شركة. لديك اجتماع مع عميل محتمل لتفاوض حول شروط عقد جديد. العميل معروف بصعوبته في التفاوض ومطالبه العالية. تحتاج إلى إتمام الصفقة بشروط تناسب شركتك."
           backgroundColor="#b6a4f8"
           onPress={() => navigateToHome('difficult')}
         />
