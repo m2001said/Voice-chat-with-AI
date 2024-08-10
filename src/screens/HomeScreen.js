@@ -46,15 +46,11 @@ export default function HomeScreen() {
           content:
             'تلعب دور عضو الفريق الذي يحتاج إلى تقديم ملاحظات بناءة حول تأخره في تسليم المهام. يجب أن تكون متعاوناً وتوضح وجهة نظرك بوضوح. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
-        {
-          role: 'user',
-          content:
-            'أنت قائد فريق في شركة تقنية. تلقى أحد أعضاء فريقك تعليقات سلبية من زملائه حول تأخره في تسليم المهام. تحتاج إلى التحدث معه وتقديم الملاحظات بطريقة بناءة.',
-        },
+
         {
           role: 'assistant',
           content:
-            'لقد لاحظت بعض التأخير في تسليم مهامك مؤخرًا. هل يمكنك أن تشرح لي ما يحدث؟ أنا عضو الفريق وأنت القائد.',
+            'لقد لاحظت بعض التأخير في تسليم مهامك مؤخرًا. هل يمكنك أن تشرح لي ما يحدث؟ .',
         },
       ];
     } else if (title === 'difficult') {
@@ -62,17 +58,13 @@ export default function HomeScreen() {
         {
           role: 'system',
           content:
-            'تلعب دور العميل الصعب في التفاوض على شروط العقد. يجب أن تكون حازمًا وتطالب بشروط أفضل. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
+            'تلعب دور العميل الصعب في التفاوض على شروط العقد. يجب أن تكون حازمًا وتطالب بشروط أفضل.العميل معروف بصعوبته في التفاوض ومطالبه العالية.  يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
-        {
-          role: 'user',
-          content:
-            'أنت مدير مبيعات في شركة. لديك اجتماع مع عميل محتمل لتفاوض حول شروط عقد جديد. العميل معروف بصعوبته في التفاوض ومطالبه العالية. تحتاج إلى إتمام الصفقة بشروط تناسب شركتك.',
-        },
+
         {
           role: 'assistant',
           content:
-            'أنا مهتم بالمنتج الذي تقدمونه، لكنني أعتقد أن السعر مرتفع قليلاً. هل يمكننا التفاوض بشأنه؟ أنا العميل الصعب وأنت مدير المبيعات.',
+            'أنا مهتم باجهزة الكمبيوتر الذي تقدمونها، لكنني أعتقد أن السعر مرتفع قليلاً. هل يمكننا التفاوض بشأنه؟ .',
         },
       ];
     }
@@ -89,19 +81,15 @@ export default function HomeScreen() {
     if (text && typeof text === 'string') {
       const trimmedResult = text.trim();
       if (trimmedResult.length > 0) {
-        let newMessages = [...messages];
-        newMessages.push({role: 'user', content: trimmedResult});
-        setMessages([...newMessages]);
-
         try {
           setLoading(true);
 
-          // generate text from ai--------------------
+          // Generate text from AI
           const res = await axios.post(
             'https://api.openai.com/v1/chat/completions',
             {
               model: 'gpt-3.5-turbo',
-              messages: messages,
+              messages: [...messages, {role: 'user', content: trimmedResult}],
             },
             {
               headers: {
@@ -116,8 +104,13 @@ export default function HomeScreen() {
 
           setLoading(false);
           startTextTpSpeech(answer);
-          newMessages.push({role: 'assistant', content: answer});
-          setMessages([...newMessages]);
+
+          // Update messages state using functional update
+          setMessages(prevMessages => [
+            ...prevMessages,
+            {role: 'user', content: trimmedResult},
+            {role: 'assistant', content: answer},
+          ]);
 
           console.log('=======messages=============================');
           console.log(messages);
@@ -127,13 +120,64 @@ export default function HomeScreen() {
         } catch (error) {
           console.log('================apiCall response====================');
           console.log('error', error);
-          Alert.alert('Error in apiCall', error);
+          Alert.alert('Error in apiCall', error.message);
+          setLoading(false);
         }
       }
     } else {
       console.log('Invalid result:', text);
     }
   };
+
+  // const apiCall = async text => {
+  //   if (text && typeof text === 'string') {
+  //     const trimmedResult = text.trim();
+  //     if (trimmedResult.length > 0) {
+  //       let newMessages = [...messages];
+  //       newMessages.push({role: 'user', content: trimmedResult});
+  //       setMessages([...newMessages]);
+
+  //       try {
+  //         setLoading(true);
+
+  //         // generate text from ai--------------------
+  //         const res = await axios.post(
+  //           'https://api.openai.com/v1/chat/completions',
+  //           {
+  //             model: 'gpt-3.5-turbo',
+  //             messages: messages,
+  //           },
+  //           {
+  //             headers: {
+  //               Authorization: `Bearer ${GPT_API}`,
+  //               'Content-Type': 'application/json',
+  //             },
+  //           },
+  //         );
+
+  //         let answer = res.data?.choices[0]?.message?.content;
+  //         console.log('----answer of gpt------ : ', answer);
+
+  //         setLoading(false);
+  //         startTextTpSpeech(answer);
+  //         newMessages.push({role: 'assistant', content: answer});
+  //         setMessages([...newMessages]);
+
+  //         console.log('=======messages=============================');
+  //         console.log(messages);
+  //         console.log('====================================');
+
+  //         updateScrollView();
+  //       } catch (error) {
+  //         console.log('================apiCall response====================');
+  //         console.log('error', error);
+  //         Alert.alert('Error in apiCall', error);
+  //       }
+  //     }
+  //   } else {
+  //     console.log('Invalid result:', text);
+  //   }
+  // };
 
   const startTextTpSpeech = async message => {
     try {
