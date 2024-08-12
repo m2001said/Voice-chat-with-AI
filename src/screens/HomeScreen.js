@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import axios from 'axios';
 import {
   View,
   Text,
@@ -15,70 +16,55 @@ import {
 } from 'react-native-responsive-screen';
 import MicrophoneLoading from '../components/MicrophoneLoading.js';
 import Voice from '@react-native-community/voice';
-import model from '../api/openAi.js';
-import Tts from 'react-native-tts';
 import {useRoute} from '@react-navigation/native';
+import {GPT_API} from '@env';
+import RNFS from 'react-native-fs'; // For file system access
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 
 export default function HomeScreen() {
   const route = useRoute();
   const {title} = route.params;
-
+  const audioRecorderPlayer = new AudioRecorderPlayer();
   const promptsMessages = () => {
     if (title === 'easy') {
       return [
         {
-          role: 'user',
-          parts: [
-            {
-              text: 'انت تلعب دور العميل الغاضب الذي لديه شكوى بشأن منتج اشتراه من المتجر. يجب أن تكون متوتراً وتطلب من المدير حل المشكلة بشكل مهني. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة، جاوب واسأل برسائل قصيرة وليست طويلة.',
-            },
-          ],
+          role: 'system',
+          content:
+            'أنت تلعب دور العميل الغاضب الذي لديه شكوى بشأن منتج اشتراه من المتجر. مهمتك هي أن تكون متوتراً وتصر على حل مشكلتك بشكل مهني. يجب ألا تقوم بدور المدير أو أي شخصية أخرى، مهما كانت الظروف. فقط تلعب دور العميل الغاضب الذي يطرح 8 أسئلة على الأقل قبل إنهاء المحادثة. تحت أي ظرف من الظروف، لا تقم بتولي دور المدير أو أي شخصية أخرى.',
         },
         {
-          role: 'model',
-          parts: [
-            {
-              text: 'عذرًا، هل أنت المدير؟ لدي شكوى جدية بشأن هاتف محمول اشتريته من هنا.',
-            },
-          ],
+          role: 'assistant',
+          content:
+            'عذرًا، هل أنت المدير؟ لدي شكوى جدية بشأن هاتف محمول اشتريته من هنا.',
         },
       ];
     } else if (title === 'moderate') {
       return [
         {
-          role: 'user',
-          parts: [
-            {
-              text: 'أنت قائد فريق في شركة تقنية. تلقى أحد أعضاء فريقك تعليقات سلبية من زملائه حول تأخره في تسليم المهام. تحتاج إلى التحدث معه وتقديم الملاحظات بطريقة بناءة.',
-            },
-          ],
+          role: 'system',
+          content:
+            'تلعب دور عضو الفريق الذي يحتاج إلى تقديم ملاحظات بناءة حول تأخره في تسليم المهام. يجب أن تكون متعاوناً وتوضح وجهة نظرك بوضوح. يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
+
         {
-          role: 'model',
-          parts: [
-            {
-              text: 'لقد لاحظت بعض التأخير في تسليم مهامك مؤخرًا. هل يمكنك أن تشرح لي ما يحدث؟',
-            },
-          ],
+          role: 'assistant',
+          content:
+            'لقد لاحظت بعض التأخير في تسليم مهامك مؤخرًا. هل يمكنك أن تشرح لي ما يحدث؟ .',
         },
       ];
     } else if (title === 'difficult') {
       return [
         {
-          role: 'user',
-          parts: [
-            {
-              text: 'أنت مدير مبيعات في شركة. لديك اجتماع مع عميل محتمل لتفاوض حول شروط عقد جديد. العميل معروف بصعوبته في التفاوض ومطالبه العالية. تحتاج إلى إتمام الصفقة بشروط تناسب شركتك.',
-            },
-          ],
+          role: 'system',
+          content:
+            'تلعب دور العميل الصعب في التفاوض على شروط العقد. يجب أن تكون حازمًا وتطالب بشروط أفضل.العميل معروف بصعوبته في التفاوض ومطالبه العالية.  يجب عليك طرح 8 أسئلة على الأقل قبل إنهاء المحادثة.',
         },
+
         {
-          role: 'model',
-          parts: [
-            {
-              text: 'أنا مهتم بالمنتج الذي تقدمونه، لكنني أعتقد أن السعر مرتفع قليلاً. هل يمكننا التفاوض بشأنه؟',
-            },
-          ],
+          role: 'assistant',
+          content:
+            'أنا مهتم باجهزة الكمبيوتر الذي تقدمونها، لكنني أعتقد أن السعر مرتفع قليلاً. هل يمكننا التفاوض بشأنه؟ .',
         },
       ];
     }
@@ -95,36 +81,47 @@ export default function HomeScreen() {
     if (text && typeof text === 'string') {
       const trimmedResult = text.trim();
       if (trimmedResult.length > 0) {
-        let newMessages = [...messages];
-        newMessages.push({role: 'user', parts: [{text: trimmedResult}]});
-        setMessages([...newMessages]);
-
         try {
           setLoading(true);
-          const chat = model.startChat({
-            history: messages,
-            generationConfig: {
-              // maxOutputTokens: 100,
+
+          // Generate text from AI
+          const res = await axios.post(
+            'https://api.openai.com/v1/chat/completions',
+            {
+              model: 'gpt-3.5-turbo',
+              messages: [...messages, {role: 'user', content: trimmedResult}],
             },
-          });
-          const chatResult = await chat.sendMessage(trimmedResult);
-          const response = await chatResult.response;
-          const responseText = await response.text();
-          console.log('------------------------------');
-          console.log('response', response);
-          console.log('------------------------------');
-          console.log('text', responseText);
-          console.log('------------------------------');
+            {
+              headers: {
+                Authorization: `Bearer ${GPT_API}`,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+
+          let answer = res.data?.choices[0]?.message?.content;
+          console.log('----answer of gpt------ : ', answer);
+
           setLoading(false);
-          startTextTpSpeech(responseText);
-          newMessages.push({role: 'model', parts: [{text: responseText}]});
-          setMessages([...newMessages]);
+          startTextTpSpeech(answer);
+
+          // Update messages state using functional update
+          setMessages(prevMessages => [
+            ...prevMessages,
+            {role: 'user', content: trimmedResult},
+            {role: 'assistant', content: answer},
+          ]);
+
+          console.log('=======messages=============================');
+          console.log(messages);
+          console.log('====================================');
 
           updateScrollView();
         } catch (error) {
           console.log('================apiCall response====================');
           console.log('error', error);
-          Alert.alert('Error in apiCall', error);
+          Alert.alert('Error in apiCall', error.message);
+          setLoading(false);
         }
       }
     } else {
@@ -132,28 +129,59 @@ export default function HomeScreen() {
     }
   };
 
-  const startTextTpSpeech = message => {
-    setSpeacking(true);
-    // Android
-    Tts.speak(message, {
-      androidParams: {
-        KEY_PARAM_PAN: -1,
-        KEY_PARAM_VOLUME: 0.5,
-        KEY_PARAM_STREAM: 'STREAM_MUSIC',
-      },
-    });
+  const startTextTpSpeech = async message => {
+    try {
+      setSpeacking(true);
+
+      const res = await axios.post(
+        'https://api.openai.com/v1/audio/speech',
+        {
+          model: 'tts-1',
+          input: message,
+          voice: 'alloy',
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${GPT_API}`,
+            'Content-Type': 'application/json',
+          },
+          responseType: 'blob', // Receive the response as a Blob
+        },
+      );
+
+      // Get a temporary local file path for the MP3 file
+      const path = `${RNFS.DocumentDirectoryPath}/speech.mp3`;
+
+      // Write the Blob response to a file
+      const reader = new FileReader();
+      reader.readAsDataURL(res.data);
+      reader.onloadend = async () => {
+        const base64data = reader.result.split(',')[1];
+        await RNFS.writeFile(path, base64data, 'base64');
+
+        // Play the audio file automatically
+        await audioRecorderPlayer.startPlayer(path);
+        audioRecorderPlayer.addPlayBackListener(e => {
+          if (e.currentPosition === e.duration) {
+            audioRecorderPlayer.stopPlayer();
+            audioRecorderPlayer.removePlayBackListener();
+            setSpeacking(false);
+          }
+        });
+      };
+    } catch (error) {
+      console.error('Error in startTextTpSpeech', error);
+      setSpeacking(false);
+    }
   };
 
   const clearMessages = () => {
-    Tts.stop();
     setMessages([]);
   };
   const stopSpeacking = () => {
-    Tts.stop();
     setSpeacking(false);
   };
   const startRecording = () => {
-    Tts.stop();
     setRecording(true);
     try {
       // Voice.start('en-US');
@@ -196,7 +224,7 @@ export default function HomeScreen() {
   useEffect(() => {
     console.log('=================new result===================');
     console.log(result);
-  }, [result]);
+  }, [result, messages]);
   const speechErrorHandler = e => {
     console.log('speech Error Handler', e);
   };
@@ -206,17 +234,6 @@ export default function HomeScreen() {
     Voice.onSpeechEnd = speechEndHandler;
     Voice.onSpeechResults = speechResultsHandler;
     Voice.onSpeechError = speechErrorHandler;
-
-    // tts handler
-    Tts.addEventListener('tts-start', event => console.log('start', event));
-    Tts.addEventListener('tts-progress', event =>
-      console.log('progress', event),
-    );
-    Tts.addEventListener('tts-finish', event => {
-      console.log('finish', event);
-      setSpeacking(false);
-    });
-    Tts.addEventListener('tts-cancel', event => console.log('cancel', event));
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
@@ -246,13 +263,13 @@ export default function HomeScreen() {
               className="space-y-4"
               showsVerticalScrollIndicator={false}>
               {messages.map((message, index) => {
-                if (message.role === 'model') {
+                if (message.role === 'assistant') {
                   return (
                     <View
                       key={index}
                       style={{width: wp(70)}}
                       className="bg-green-200 rounded-xl p-2 rounded-tl-none">
-                      <Text>{message.parts[0].text}</Text>
+                      <Text>{message.content}</Text>
                     </View>
                   );
                 } else {
@@ -261,7 +278,7 @@ export default function HomeScreen() {
                       <View
                         style={{width: wp(70)}}
                         className="bg-white rounded-xl p-2 rounded-tr-none">
-                        <Text>{message.parts[0].text}</Text>
+                        <Text>{message.content}</Text>
                       </View>
                     </View>
                   );
