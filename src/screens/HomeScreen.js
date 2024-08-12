@@ -129,56 +129,6 @@ export default function HomeScreen() {
     }
   };
 
-  // const apiCall = async text => {
-  //   if (text && typeof text === 'string') {
-  //     const trimmedResult = text.trim();
-  //     if (trimmedResult.length > 0) {
-  //       let newMessages = [...messages];
-  //       newMessages.push({role: 'user', content: trimmedResult});
-  //       setMessages([...newMessages]);
-
-  //       try {
-  //         setLoading(true);
-
-  //         // generate text from ai--------------------
-  //         const res = await axios.post(
-  //           'https://api.openai.com/v1/chat/completions',
-  //           {
-  //             model: 'gpt-3.5-turbo',
-  //             messages: messages,
-  //           },
-  //           {
-  //             headers: {
-  //               Authorization: `Bearer ${GPT_API}`,
-  //               'Content-Type': 'application/json',
-  //             },
-  //           },
-  //         );
-
-  //         let answer = res.data?.choices[0]?.message?.content;
-  //         console.log('----answer of gpt------ : ', answer);
-
-  //         setLoading(false);
-  //         startTextTpSpeech(answer);
-  //         newMessages.push({role: 'assistant', content: answer});
-  //         setMessages([...newMessages]);
-
-  //         console.log('=======messages=============================');
-  //         console.log(messages);
-  //         console.log('====================================');
-
-  //         updateScrollView();
-  //       } catch (error) {
-  //         console.log('================apiCall response====================');
-  //         console.log('error', error);
-  //         Alert.alert('Error in apiCall', error);
-  //       }
-  //     }
-  //   } else {
-  //     console.log('Invalid result:', text);
-  //   }
-  // };
-
   const startTextTpSpeech = async message => {
     try {
       setSpeacking(true);
