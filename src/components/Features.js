@@ -8,8 +8,9 @@ import {
 export default function Features({
   onPress,
   backgroundColor,
-  title,
+  cahllengeNum,
   description,
+  title,
 }) {
   return (
     <TouchableOpacity
@@ -17,7 +18,7 @@ export default function Features({
       className="mb-2 p-4 rounded-xl space-y-2"
       style={{backgroundColor: backgroundColor}}>
       <Text style={{fontSize: wp(4.8)}} className="font-semibold text-gray-700">
-        {title}
+        {cahllengeNum} - {title}
       </Text>
 
       <Text style={{fontSize: wp(3.8)}} className="font-medium text-gray-700 ">
