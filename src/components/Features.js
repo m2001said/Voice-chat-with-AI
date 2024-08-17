@@ -21,7 +21,7 @@ export default function Features({
         {cahllengeNum} - {title}
       </Text>
 
-      <Text style={{fontSize: wp(3.8)}} className="font-medium text-gray-700 ">
+      <Text style={{fontSize: wp(3.8)}} className="font-medium text-gray-700">
         {description}
       </Text>
     </TouchableOpacity>

@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import {
   widthPercentageToDP as wp,
@@ -20,6 +21,7 @@ import {useRoute} from '@react-navigation/native';
 import {GPT_API} from '@env';
 import RNFS from 'react-native-fs';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import FastImage from 'react-native-fast-image';
 
 export default function HomeScreen() {
   const route = useRoute();
@@ -157,6 +159,7 @@ export default function HomeScreen() {
   };
 
   const [messages, setMessages] = useState(() => promptsMessages() || []);
+  const [showMessages, setShowMessages] = useState(false);
   const [recording, setRecording] = useState(false);
   const [speacking, setSpeacking] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -245,8 +248,7 @@ export default function HomeScreen() {
 
   const startTextToSpeech = async message => {
     try {
-      setSpeacking(true);
-
+      setLoading(true);
       const res = await axios.post(
         'https://api.openai.com/v1/audio/speech',
         {
@@ -263,6 +265,8 @@ export default function HomeScreen() {
         },
       );
 
+      setLoading(false);
+      setSpeacking(true);
       // Get a temporary local file path for the MP3 file
       const path = `${RNFS.DocumentDirectoryPath}/speech.mp3`;
 
@@ -276,10 +280,13 @@ export default function HomeScreen() {
         // Play the audio file automatically
         await audioRecorderPlayer.startPlayer(path);
         audioRecorderPlayer.addPlayBackListener(e => {
-          if (e.currentPosition === e.duration) {
+          if (e.currentPosition >= e.duration) {
             audioRecorderPlayer.stopPlayer();
             audioRecorderPlayer.removePlayBackListener();
             setSpeacking(false);
+            console.log(
+              '===========setSpeacking false=========================',
+            );
           }
         });
       };
@@ -292,7 +299,9 @@ export default function HomeScreen() {
   const clearMessages = () => {
     setMessages([]);
   };
-  const stopSpeacking = () => {
+  const stopSpeacking = async () => {
+    await audioRecorderPlayer.stopPlayer(); // Stop the player
+    audioRecorderPlayer.removePlayBackListener(); // Clean up the listener
     setSpeacking(false);
   };
   const startRecording = () => {
@@ -355,18 +364,10 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View className="flex-1 bg-white">
-      <SafeAreaView className="flex-1 flex mx-5">
-        {/* bot icon */}
-        <View className="flex-row justify-center">
-          <Image
-            source={require('../../assets/images/bot.png')}
-            style={{width: wp(15), height: hp(20)}}
-          />
-        </View>
-
-        <View className="space-y-2 flex-1">
-          <Text style={{fontSize: wp(5)}}>Assistant</Text>
+    <SafeAreaView>
+      {showMessages ? (
+        <View className="space-y-2 bg-white px-5">
+          <Text style={{fontSize: wp(5), marginTop: 15}}>Assistant</Text>
 
           {/* Display Tokens and Cost */}
           <Text style={{fontSize: wp(4), marginTop: 10}}>
@@ -375,7 +376,7 @@ export default function HomeScreen() {
           </Text>
 
           <View
-            style={{height: hp(58)}}
+            style={{height: hp(75)}}
             className="bg-neutral-100 rounded-3xl p-4">
             <ScrollView
               ref={scrollViewRef}
@@ -406,46 +407,164 @@ export default function HomeScreen() {
               })}
             </ScrollView>
           </View>
-        </View>
 
-        {/* recording clead and stop buttons */}
-        <View className="flex-row justify-center items-center p-5 mt-16">
-          {loading ? (
-            <ActivityIndicator size="large" />
-          ) : recording ? (
-            <TouchableOpacity onPress={stopRecording}>
-              <MicrophoneLoading />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={startRecording}>
-              <Image
-                source={require('../../assets/images/microphone.png')}
-                style={{width: wp(12), height: hp(7)}}
-              />
-            </TouchableOpacity>
-          )}
+          {/* recording clead and stop buttons */}
+          <View className="flex-row justify-center items-center p-5 mt-16">
+            {loading ? (
+              <ActivityIndicator size="large" />
+            ) : recording ? (
+              <TouchableOpacity onPress={stopRecording}>
+                <MicrophoneLoading />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={startRecording}>
+                <Image
+                  source={require('../../assets/images/microphone.png')}
+                  style={{width: wp(12), height: hp(7)}}
+                />
+              </TouchableOpacity>
+            )}
 
-          {messages.length > 0 && (
+            {/* {messages.length > 0 && (
+              <TouchableOpacity
+                onPress={clearMessages}
+                className="absolute right-8 bg-gray-600 p-2 rounded-lg">
+                <Text style={{fontSize: wp(4)}} className="text-white">
+                  Clear
+                </Text>
+              </TouchableOpacity>
+            )} */}
+
+            {speacking && (
+              <TouchableOpacity
+                onPress={stopSpeacking}
+                className="absolute left-8 bg-red-500 p-2 rounded-lg">
+                <Text style={{fontSize: wp(4)}} className="text-white">
+                  Stop
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
-              onPress={clearMessages}
+              onPress={() => setShowMessages(false)}
               className="absolute right-8 bg-gray-600 p-2 rounded-lg">
               <Text style={{fontSize: wp(4)}} className="text-white">
-                Clear
+                رجوع للمحادثة
               </Text>
             </TouchableOpacity>
-          )}
-
-          {speacking && (
-            <TouchableOpacity
-              onPress={stopSpeacking}
-              className="absolute left-8 bg-red-500 p-2 rounded-lg">
-              <Text style={{fontSize: wp(4)}} className="text-white">
-                Stop
-              </Text>
-            </TouchableOpacity>
-          )}
+          </View>
         </View>
-      </SafeAreaView>
-    </View>
+      ) : (
+        // real calling vresion
+        <View className="bg-black justify-center" style={{height: hp(100)}}>
+          {loading ? (
+            <View>
+              <FastImage
+                style={{
+                  width: wp(40),
+                  height: hp(40),
+                  marginHorizontal: 'auto',
+                }}
+                source={{
+                  uri: 'https://media.giphy.com/media/17mNCcKU1mJlrbXodo/giphy.gif',
+                  priority: FastImage.priority.normal,
+                }}
+                resizeMode={FastImage.resizeMode.contain}
+              />
+            </View>
+          ) : recording ? (
+            <View>
+              <FastImage
+                style={{
+                  width: wp(90),
+                  height: hp(50),
+                  marginHorizontal: 'auto',
+                }}
+                source={{
+                  uri: 'https://media.giphy.com/media/xUOxfj6cTg3ezmjIoo/giphy.gif',
+                  priority: FastImage.priority.normal,
+                }}
+                resizeMode={FastImage.resizeMode.contain}
+              />
+              <Text className="text-white text-center text-xl">
+                جاري الاستماع
+              </Text>
+            </View>
+          ) : speacking ? (
+            <View>
+              <FastImage
+                style={{
+                  width: wp(90),
+                  height: hp(50),
+                  marginHorizontal: 'auto',
+                }}
+                source={{
+                  uri: 'https://media.giphy.com/media/RgzryV9nRCMHPVVXPV/giphy.gif',
+                  priority: FastImage.priority.normal,
+                }}
+                resizeMode={FastImage.resizeMode.contain}
+              />
+              <TouchableOpacity>
+                <Text className="text-white text-center text-xl">
+                  اضغط للمقاطعة
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <FastImage
+                style={{
+                  width: wp(40),
+                  height: hp(40),
+                  marginHorizontal: 'auto',
+                }}
+                source={{
+                  uri: 'https://media.giphy.com/media/17mNCcKU1mJlrbXodo/giphy.gif',
+                  priority: FastImage.priority.normal,
+                }}
+                resizeMode={FastImage.resizeMode.contain}
+              />
+              <Text className="text-white text-center text-xl">
+                اضغط علي الميكرفون للتحدث
+              </Text>
+            </View>
+          )}
+          {/* recording clead and stop buttons */}
+          <View className="absolute bottom-4 flex-row justify-between items-center w-full px-6">
+            {!showMessages && (
+              <TouchableOpacity
+                onPress={() => setShowMessages(true)}
+                className="w-12 h-12 items-center justify-center bg-red-500 rounded-full">
+                <Text className="text-3xl text-white">X</Text>
+              </TouchableOpacity>
+            )}
+
+            {loading ? (
+              <ActivityIndicator size="large" />
+            ) : recording ? (
+              <TouchableOpacity onPress={stopRecording}>
+                <MicrophoneLoading />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={startRecording}>
+                <Image
+                  source={require('../../assets/images/microphone.png')}
+                  style={{width: wp(12), height: hp(7)}}
+                />
+              </TouchableOpacity>
+            )}
+
+            {/*  start and stop , when stop , disable microphoe button and make it light black and make loaiding cricle with stoke only */}
+            {!showMessages && (
+              <TouchableOpacity
+                onPress={stopSpeacking}
+                className="w-12 h-12 items-center justify-center bg-gray-600 rounded-full">
+                <Text className="text-3xl text-white">□</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
